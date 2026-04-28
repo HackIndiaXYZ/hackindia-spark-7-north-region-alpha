@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="DIPDoc — Intelligent health monitoring for elderly care. Real-time sensor dashboard with AI-powered health insights.">
+  <meta name="theme-color" content="#0B0F1A">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DIPDoc">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <title>DIPDoc — Elder Health Monitor</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Ambient Glow Layer -->
+  <div id="ambient-glow-layer"></div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Notification Panel Overlay -->
+  <div class="notification-overlay" id="notification-overlay"></div>
+
+  <!-- Notification Panel -->
+  <div class="notification-panel" id="notification-panel">
+    <div class="panel-header">
+      <h2>🔔 Alerts</h2>
+      <button class="panel-close" id="btn-close-panel" aria-label="Close notifications">✕</button>
+    </div>
+    <div id="notification-list"></div>
+  </div>
+
+  <!-- Report Modal -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal-content">
+      <div class="panel-header">
+        <h2>📋 Clinical Report</h2>
+        <button class="panel-close" id="btn-close-modal" aria-label="Close report">✕</button>
+      </div>
+      <div id="report-preview"></div>
+      <button class="action-btn" id="btn-download-report" style="margin-top: 20px;">
+        📥 Download PDF Report
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- APP SHELL                                          -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div id="app-shell">
+
+    <!-- Top Bar -->
+    <header class="top-bar" id="top-bar">
+      <div class="top-bar-left">
+        <div class="app-logo-icon">💊</div>
+        <div class="app-logo-text">DIP<span>Doc</span></div>
+      </div>
+      <div class="top-bar-right">
+        <button class="icon-btn" id="btn-report" aria-label="Generate report" title="Clinical Report">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-notifications" aria-label="View notifications" title="Notifications">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="badge" id="notif-badge" style="display:none;">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- VIEWS CONTAINER                                    -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <main class="views-container" id="views-container">
+
+      <!-- ─── VIEW: HOME ──────────────────────────────── -->
+      <section class="view active" id="view-home" data-view="home">
+
+        <!-- Connection Status -->
+        <div class="status-pills">
+          <div class="status-pill" id="connection-bar">
+            <div class="status-dot pulse" id="connection-dot"></div>
+            <span id="connection-text"><strong>Simulator</strong> — Live</span>
+          </div>
+          <div class="status-pill" id="cloud-sync-bar">
+            <span class="cloud-icon">☁️</span>
+            <span id="cloud-sync-text">Cloud: Synced</span>
+            <span class="sync-badge" id="cloud-sync-status">● Live</span>
+          </div>
+        </div>
+
+        <!-- Health Orb -->
+        <div class="orb-section" id="orb-section">
+          <div class="health-orb-wrapper">
+            <svg class="orb-ring" viewBox="0 0 200 200">
+              <circle class="orb-ring-track" cx="100" cy="100" r="90" />
+              <circle class="orb-ring-progress" id="orb-ring-progress" cx="100" cy="100" r="90" />
+            </svg>
+            <div class="health-orb" id="health-orb">
+              <div class="health-orb-inner" id="health-orb-inner">
+                <span class="orb-score" id="orb-score">92</span>
+                <span class="orb-label">Health Score</span>
+              </div>
+            </div>
+          </div>
+          <div class="orb-status-label" id="orb-status-label">All Systems Stable</div>
+        </div>
+
+        <!-- Quick Stats Row -->
+        <div class="quick-stats" id="quick-stats">
+          <div class="quick-stat">
+            <span class="qs-value" id="qs-hr">72</span>
+            <span class="qs-label">BPM</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat">
+            <span class="qs-value" id="qs-spo2">98</span>
+            <span class="qs-label">SpO₂%</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat">
+            <span class="qs-value" id="qs-bp">120/80</span>
+            <span class="qs-label">BP</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat">
+            <span class="qs-value" id="qs-temp">36.5</span>
+            <span class="qs-label">°C</span>
+          </div>
+        </div>
+
+        <!-- Vitals Section Title -->
+        <h2 class="section-heading">
+          <span class="sh-icon">📊</span>
+          Live Vitals
+        </h2>
+
+        <!-- Metric Cards Grid -->
+        <div class="metrics-grid" id="metrics-grid">
+
+          <!-- Heart Rate -->
+          <div class="metric-card" id="card-hr">
+            <div class="mc-header">
+              <div class="mc-icon hr">❤️</div>
+              <div class="mc-trend up" id="hr-trend">
+                <span class="trend-arrow">↑</span><span id="hr-trend-val">1.2%</span>
+              </div>
+            </div>
+            <div class="mc-value-row">
+              <span class="mc-value" id="hr-value">72</span>
+              <span class="mc-unit">bpm</span>
+            </div>
+            <div class="mc-label">Heart Rate</div>
+            <div class="mc-bar-track"><div class="mc-bar hr" id="hr-bar" style="width:72%"></div></div>
+          </div>
+
+          <!-- Blood Pressure -->
+          <div class="metric-card" id="card-bp">
+            <div class="mc-header">
+              <div class="mc-icon bp">🩸</div>
+              <div class="mc-trend stable" id="bp-trend">
+                <span class="trend-arrow">→</span><span id="bp-trend-val">0.5%</span>
+              </div>
+            </div>
+            <div class="mc-value-row">
+              <span class="mc-value" id="bp-value">120/80</span>
+              <span class="mc-unit">mmHg</span>
+            </div>
+            <div class="mc-label">Blood Pressure</div>
+            <div class="mc-bar-track"><div class="mc-bar bp" id="bp-bar" style="width:60%"></div></div>
+          </div>
+
+          <!-- SpO2 -->
+          <div class="metric-card" id="card-spo2">
+            <div class="mc-header">
+              <div class="mc-icon spo2">🫁</div>
+              <div class="mc-trend up" id="spo2-trend">
+                <span class="trend-arrow">↑</span><span id="spo2-trend-val">0.3%</span>
+              </div>
+            </div>
+            <div class="mc-value-row">
+              <span class="mc-value" id="spo2-value">98</span>
+              <span class="mc-unit">%</span>
+            </div>
+            <div class="mc-label">Blood Oxygen</div>
+            <div class="mc-bar-track"><div class="mc-bar spo2" id="spo2-bar" style="width:98%"></div></div>
+          </div>
+
+          <!-- Temperature -->
+          <div class="metric-card" id="card-temp">
+            <div class="mc-header">
+              <div class="mc-icon temp">🌡️</div>
+              <div class="mc-trend stable" id="temp-trend">
+                <span class="trend-arrow">→</span><span id="temp-trend-val">0.1°</span>
+              </div>
+            </div>
+            <div class="mc-value-row">
+              <span class="mc-value" id="temp-value">36.5</span>
+              <span class="mc-unit">°C</span>
+            </div>
+            <div class="mc-label">Temperature</div>
+            <div class="mc-bar-track"><div class="mc-bar temp" id="temp-bar" style="width:65%"></div></div>
+          </div>
+
+          <!-- Breath Quality -->
+          <div class="metric-card" id="card-breath">
+            <div class="mc-header">
+              <div class="mc-icon breath">🌬️</div>
+              <div class="mc-trend up" id="breath-trend">
+                <span class="trend-arrow">↑</span><span id="breath-trend-val">2.1%</span>
+              </div>
+            </div>
+            <div class="mc-value-row">
+              <span class="mc-value" id="breath-value">94</span>
+              <span class="mc-unit">AQI</span>
+            </div>
+            <div class="mc-label">Breath Quality</div>
+            <div class="mc-bar-track"><div class="mc-bar breath" id="breath-bar" style="width:94%"></div></div>
+          </div>
+
+          <!-- Hydration -->
+          <div class="metric-card" id="card-hydration">
+            <div class="mc-header">
+              <div class="mc-icon hydration">💧</div>
+              <div class="mc-trend up" id="hydration-trend">
+                <span class="trend-arrow">↑</span><span id="hydration-trend-val">1.5%</span>
+              </div>
+            </div>
+            <div class="mc-value-row">
+              <span class="mc-value" id="hydration-value">62</span>
+              <span class="mc-unit">%</span>
+            </div>
+            <div class="mc-label">Hydration</div>
+            <div class="mc-bar-track"><div class="mc-bar hydration" id="hydration-bar" style="width:62%"></div></div>
+          </div>
+
+        </div>
+
+        <!-- AI Insight Banner -->
+        <div class="ai-insight-banner" id="advice-card">
+          <div class="aib-left">
+            <div class="aib-icon">✨</div>
+            <div>
+              <div class="aib-title">AI Health Insight</div>
+              <p class="aib-text" id="advice-text">Your vitals look great today. Keep staying hydrated and maintain your routine.</p>
+            </div>
+          </div>
+          <div class="aib-source" id="advice-source">Mode: <span class="mock">Mock</span></div>
+        </div>
+
+        <!-- Simulator Controls -->
+        <div class="sim-section">
+          <h2 class="section-heading">
+            <span class="sh-icon">🔧</span>
+            Band Simulator
+          </h2>
+          <div class="sim-card">
+            <div class="sim-buttons">
+              <button class="sim-btn normal" id="sim-normal">✅ Normal</button>
+              <button class="sim-btn warning" id="sim-warning">⚠️ Warning</button>
+              <button class="sim-btn critical" id="sim-critical">🚨 Critical</button>
+            </div>
+            <button class="sim-btn auto" id="sim-auto">🔄 Auto-Cycle Demo</button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: ANALYTICS ─────────────────────────── -->
+      <section class="view" id="view-analytics" data-view="analytics">
+
+        <h2 class="section-heading">
+          <span class="sh-icon">🧠</span>
+          Alert Explanation (SHAP)
+        </h2>
+        <div class="chart-card" id="shap-card">
+          <div class="shap-chart-container">
+            <canvas id="shap-chart"></canvas>
+          </div>
+        </div>
+
+        <h2 class="section-heading">
+          <span class="sh-icon">📈</span>
+          24-Hour Trends
+        </h2>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Heart Rate</h3>
+          <div class="trend-chart-container">
+            <canvas id="trend-hr-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Blood Oxygen (SpO₂)</h3>
+          <div class="trend-chart-container">
+            <canvas id="trend-spo2-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Blood Pressure</h3>
+          <div class="trend-chart-container">
+            <canvas id="trend-bp-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Weekly Summary -->
+        <h2 class="section-heading">
+          <span class="sh-icon">📊</span>
+          Weekly Summary
+        </h2>
+        <div class="weekly-stats" id="weekly-stats">
+          <div class="ws-card">
+            <div class="ws-value" id="ws-avg-hr">72</div>
+            <div class="ws-label">Avg HR</div>
+          </div>
+          <div class="ws-card">
+            <div class="ws-value" id="ws-avg-spo2">97</div>
+            <div class="ws-label">Avg SpO₂</div>
+          </div>
+          <div class="ws-card">
+            <div class="ws-value" id="ws-alerts">3</div>
+            <div class="ws-label">Alerts</div>
+          </div>
+          <div class="ws-card">
+            <div class="ws-value" id="ws-score">89</div>
+            <div class="ws-label">Health</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: REPORTS ───────────────────────────── -->
+      <section class="view" id="view-reports" data-view="reports">
+
+        <h2 class="section-heading">
+          <span class="sh-icon">📋</span>
+          Clinical Reports
+        </h2>
+
+        <button class="action-btn primary" id="btn-generate-report">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Generate New Report
+        </button>
+
+        <!-- Past Reports -->
+        <div class="reports-list" id="reports-list">
+          <div class="report-item">
+            <div class="ri-icon">📄</div>
+            <div class="ri-info">
+              <div class="ri-title">Daily Health Summary</div>
+              <div class="ri-date">Today, 11:30 AM</div>
+            </div>
+            <div class="ri-status normal">Normal</div>
+          </div>
+          <div class="report-item">
+            <div class="ri-icon">📄</div>
+            <div class="ri-info">
+              <div class="ri-title">Warning Event Report</div>
+              <div class="ri-date">Yesterday, 3:45 PM</div>
+            </div>
+            <div class="ri-status warning">Warning</div>
+          </div>
+          <div class="report-item">
+            <div class="ri-icon">📄</div>
+            <div class="ri-info">
+              <div class="ri-title">Weekly Analysis</div>
+              <div class="ri-date">Apr 3, 2026</div>
+            </div>
+            <div class="ri-status normal">Normal</div>
+          </div>
+        </div>
+
+        <!-- Medication Tracker -->
+        <h2 class="section-heading">
+          <span class="sh-icon">💊</span>
+          Medication Tracker
+        </h2>
+        <div id="medication-list" class="medication-list">
+          <!-- Populated by medications.js -->
+        </div>
+
+        <!-- Caregiver Panel -->
+        <h2 class="section-heading">
+          <span class="sh-icon">👨‍⚕️</span>
+          Caregiver
+        </h2>
+        <div class="caregiver-card">
+          <div class="cg-profile">
+            <div class="cg-avatar">DR</div>
+            <div class="cg-info">
+              <h3>Dr. Ravi Sharma</h3>
+              <p>Primary Caregiver</p>
+            </div>
+          </div>
+          <div class="cg-status" id="caregiver-status">
+            <span>✅</span>
+            <span id="caregiver-status-text">No active alerts — Patient stable</span>
+          </div>
+          <div class="alert-history" id="alert-history"></div>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: CHAT ──────────────────────────────── -->
+      <section class="view" id="view-chat" data-view="chat">
+
+        <div class="chat-container" id="chat-container">
+          <div class="chat-messages" id="chat-messages">
+            <!-- Welcome message -->
+            <div class="chat-msg bot">
+              <div class="chat-avatar">🤖</div>
+              <div class="chat-bubble">
+                <p>Hello! I'm your DIPDoc Health Assistant. Ask me anything about your vitals, health tips, or what your readings mean. I'm here to help! 💚</p>
+                <span class="chat-time">Now</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Replies -->
+          <div class="quick-replies" id="quick-replies">
+            <button class="qr-btn" data-msg="How are my vitals today?">How are my vitals?</button>
+            <button class="qr-btn" data-msg="What should I eat for better hydration?">Hydration tips</button>
+            <button class="qr-btn" data-msg="Is my heart rate normal?">Heart rate check</button>
+            <button class="qr-btn" data-msg="Give me breathing exercises">Breathing exercises</button>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="chat-input-bar">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Ask about your health..." autocomplete="off">
+            <button class="chat-send-btn" id="chat-send-btn" aria-label="Send message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: RISKS ─────────────────────────────── -->
+      <section class="view" id="view-risks" data-view="risks">
+
+        <h2 class="section-heading">
+          <span class="sh-icon">⚠️</span>
+          Risk Assessment
+        </h2>
+
+        <!-- Risk Gauge -->
+        <div class="risk-gauge-container">
+          <div class="risk-gauge" id="risk-gauge">
+            <svg viewBox="0 0 200 120" class="gauge-svg">
+              <path d="M 20 100 A 80 80 0 0 1 180 100" class="gauge-track" />
+              <path d="M 20 100 A 80 80 0 0 1 180 100" class="gauge-fill" id="gauge-fill" />
+            </svg>
+            <div class="gauge-value" id="gauge-value">Low</div>
+            <div class="gauge-score" id="gauge-score">18%</div>
+          </div>
+        </div>
+
+        <!-- Risk Factors -->
+        <h2 class="section-heading">
+          <span class="sh-icon">🔍</span>
+          Top Risk Factors
+        </h2>
+        <div class="risk-factors" id="risk-factors">
+          <!-- Populated by risks.js -->
+        </div>
+
+        <!-- Preventive Recommendations -->
+        <h2 class="section-heading">
+          <span class="sh-icon">🛡️</span>
+          Preventive Actions
+        </h2>
+        <div class="recommendations" id="recommendations">
+          <!-- Populated by risks.js -->
+        </div>
+
+        <!-- Emergency SOS -->
+        <div class="sos-section">
+          <button class="sos-btn" id="sos-btn">
+            <span class="sos-icon">🚨</span>
+            <span>Emergency SOS</span>
+          </button>
+          <p class="sos-hint">Press and hold for 2 seconds to alert caregiver</p>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: PROFILE ───────────────────────────── -->
+      <section class="view" id="view-profile" data-view="profile">
+
+        <div class="profile-card">
+          <div class="profile-avatar" id="profile-avatar">RS</div>
+          <h2 class="profile-name">Ramesh Sharma</h2>
+          <p class="profile-subtitle">Patient ID: DIP-2026-0417</p>
+          <div class="profile-stats">
+            <div class="ps-item">
+              <div class="ps-value">76</div>
+              <div class="ps-label">Age</div>
+            </div>
+            <div class="ps-divider"></div>
+            <div class="ps-item">
+              <div class="ps-value">Male</div>
+              <div class="ps-label">Gender</div>
+            </div>
+            <div class="ps-divider"></div>
+            <div class="ps-item">
+              <div class="ps-value">O+</div>
+              <div class="ps-label">Blood</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health Conditions -->
+        <h2 class="section-heading">
+          <span class="sh-icon">🩺</span>
+          Health Conditions
+        </h2>
+        <div class="conditions-list">
+          <div class="condition-tag">Type 2 Diabetes</div>
+          <div class="condition-tag">Hypertension</div>
+          <div class="condition-tag">Mild Asthma</div>
+        </div>
+
+        <!-- Device Info -->
+        <h2 class="section-heading">
+          <span class="sh-icon">⌚</span>
+          Device Info
+        </h2>
+        <div class="info-card">
+          <div class="info-row">
+            <span class="ir-label">Device</span>
+            <span class="ir-value">DIPDOC-BAND-001</span>
+          </div>
+          <div class="info-row">
+            <span class="ir-label">Firmware</span>
+            <span class="ir-value" id="device-firmware">v1.2.3</span>
+          </div>
+          <div class="info-row">
+            <span class="ir-label">Battery</span>
+            <span class="ir-value" id="device-battery">85%</span>
+          </div>
+          <div class="info-row">
+            <span class="ir-label">Connection</span>
+            <span class="ir-value connected">Simulator Active</span>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <h2 class="section-heading">
+          <span class="sh-icon">⚙️</span>
+          Settings
+        </h2>
+        <div class="info-card">
+          <div class="setting-row">
+            <div class="sr-left">
+              <span class="sr-icon">✨</span>
+              <span>Gemini AI (Live)</span>
+            </div>
+            <label class="toggle-switch" id="gemini-toggle">
+              <input type="checkbox" id="gemini-live-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left">
+              <span class="sr-icon">🔔</span>
+              <span>Push Notifications</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left">
+              <span class="sr-icon">🌙</span>
+              <span>Dark Mode</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked disabled>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="sr-left">
+              <span class="sr-icon">☁️</span>
+              <span>Cloud Sync</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- App Info -->
+        <div class="app-info">
+          <p>DIPDoc v2.0 — Powered by Antigravity</p>
+          <p>Built for ChitkaraVerse 2026</p>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- BOTTOM NAVIGATION                                  -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-tab active" data-tab="home" id="tab-home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-tab" data-tab="analytics" id="tab-analytics">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Analytics</span>
+      </button>
+      <button class="nav-tab" data-tab="reports" id="tab-reports">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Reports</span>
+      </button>
+      <button class="nav-tab" data-tab="chat" id="tab-chat">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button class="nav-tab" data-tab="risks" id="tab-risks">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Risks</span>
+      </button>
+      <button class="nav-tab" data-tab="profile" id="tab-profile">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profile</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- SCRIPTS                                              -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <script src="js/simulator.js"></script>
+  <script src="js/ambient-glow.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/shap-chart.js"></script>
+  <script src="js/gemini-advisor.js"></script>
+  <script src="js/cloud-sync.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/chatbot.js"></script>
+  <script src="js/risks.js"></script>
+  <script src="js/trends.js"></script>
+  <script src="js/medications.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/app.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" onerror="console.warn('jsPDF CDN failed — PDF export disabled')"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+          .catch(err => console.warn('SW registration failed:', err));
+      });
+    }
+
+    // PWA Install Prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      // Show install banner
+      const banner = document.createElement('div');
+      banner.id = 'install-banner';
+      banner.innerHTML = `
+        <div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:999;
+          max-width:480px;width:calc(100% - 32px);padding:16px 20px;border-radius:16px;
+          background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);
+          backdrop-filter:blur(20px);display:flex;align-items:center;gap:12px;
+          font-family:'Inter',sans-serif;animation:viewFadeIn 0.4s ease;">
+          <span style="font-size:28px;">📲</span>
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:14px;color:#F3F4F6;">Install DIPDoc</div>
+            <div style="font-size:12px;color:#9CA3AF;">Add to home screen for quick access</div>
+          </div>
+          <button onclick="installPWA()" style="padding:8px 18px;border:none;border-radius:20px;
+            background:linear-gradient(135deg,#10B981,#059669);color:#fff;font-weight:600;
+            font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">Install</button>
+          <button onclick="this.parentElement.parentElement.remove()" style="background:none;
+            border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:4px;">✕</button>
+        </div>
+      `;
+      document.body.appendChild(banner);
+    });
+
+    function installPWA() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(result => {
+        console.log('Install result:', result.outcome);
+        deferredPrompt = null;
+        const banner = document.getElementById('install-banner');
+        if (banner) banner.remove();
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      console.log('✅ DIPDoc installed successfully!');
+      const banner = document.getElementById('install-banner');
+      if (banner) banner.remove();
+    });
+  </script>
+</body>
+</html>
